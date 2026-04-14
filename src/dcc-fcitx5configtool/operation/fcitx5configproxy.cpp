@@ -68,7 +68,7 @@ QStringList Fcitx5ConfigProxyPrivate::formatKey(const QString &shortcut) {
 
 QString Fcitx5ConfigProxyPrivate::formatKeys(const QStringList &keys) {
     qCDebug(proxy) << "Formatting keys from list:" << keys;
-    QStringList list;   
+    QStringList list;
     for (const auto &key : keys) {
         if (key.trimmed().toLower() == "ctrl")
             list << "Control";
@@ -97,14 +97,14 @@ QVariant Fcitx5ConfigProxyPrivate::readDBusValue(const QVariant &value) {
         auto argument = qvariant_cast<QDBusArgument>(value);
         QVariantMap map;
         argument >> map;
-        
+
         QVariantMap resultMap;
         for (auto iter = map.begin(); iter != map.end(); ++iter) {
             resultMap[iter.key()] = readDBusValue(iter.value());
         }
         return resultMap;
     }
-    
+
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     if (value.typeId() == QMetaType::QVariantMap) {
 #else
@@ -117,7 +117,7 @@ QVariant Fcitx5ConfigProxyPrivate::readDBusValue(const QVariant &value) {
         }
         return resultMap;
     }
-    
+
     return value;
 }
 
@@ -333,7 +333,7 @@ void Fcitx5ConfigProxy::requestConfig(bool sync)
     }
     qCDebug(proxy) << "Exiting requestConfig";
 }
- 
+
 void Fcitx5ConfigProxy::onRequestConfigFinished(QDBusPendingCallWatcher *watcher)
 {
     qCDebug(proxy) << "Entering onRequestConfigFinished for path" << d->path;
@@ -344,13 +344,18 @@ void Fcitx5ConfigProxy::onRequestConfigFinished(QDBusPendingCallWatcher *watcher
         return;
     }
     qCInfo(proxy) << "Successfully received config for path:" << d->path;
-    d->configTypes = reply.argumentAt<1>(); 
+    d->configTypes = reply.argumentAt<1>();
 
     auto value = reply.argumentAt<0>().variant();
     QVariantMap allMap;
     allMap = d->readDBusValue(value).toMap();
-    std::swap(d->configValue, allMap);
 
+    if (allMap == d->configValue) {
+        qCDebug(proxy) << "Config data unchanged, skip notify for path" << d->path;
+        return;
+    }
+
+    std::swap(d->configValue, allMap);
     Q_EMIT requestConfigFinished();
     qCDebug(proxy) << "Exiting onRequestConfigFinished";
 }
